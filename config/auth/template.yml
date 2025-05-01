@@ -1,0 +1,11 @@
+app:
+  name: "placeholder"
+  addr: "placeholder"
+  port: "placeholder"
+
+db:
+  user: "placeholder"
+  password: "placeholder"
+  dbname: "placeholder"
+  addr: "placeholder"
+  port: "placeholder"
