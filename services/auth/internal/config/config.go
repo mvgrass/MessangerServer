@@ -1,4 +1,4 @@
-package auth
+package config
 
 type Config struct {
 	App struct {

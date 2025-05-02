@@ -1,7 +1,9 @@
-package auth
+package router
 
 import (
-	jizz "github.com/gin-gonic/gin"
+	"MessangerServer/services/auth/internal/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 // - /auth/register add to db req {mail, name, psswd} / resp {jwt tokens}
@@ -14,12 +16,12 @@ import (
 // TODO:
 // reset password api
 
-func InitRouter(service IUserService) *jizz.Engine {
-	router := jizz.Default()
+func InitRouter(service service.IUserService) *gin.Engine {
+	router := gin.Default()
 	auth := router.Group("/auth")
-	auth.GET("/health", service.healthHandler)
-	auth.POST("/register", service.registerHandler)
-	auth.POST("/login", service.loginHandler)
+	auth.GET("/health", service.HealthHandler)
+	auth.POST("/register", service.RegisterHandler)
+	auth.POST("/login", service.LoginHandler)
 
 	return router
 }

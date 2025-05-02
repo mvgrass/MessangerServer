@@ -1,7 +1,8 @@
-package auth
+package repository
 
 import (
-	authCfg "MessangerServer/internal/config/auth"
+	"MessangerServer/services/auth/internal/config"
+	"MessangerServer/services/auth/internal/model"
 	"fmt"
 	"log"
 
@@ -9,22 +10,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type User struct {
-	ID    uint   `gorm:"primaryKey"`
-	Name  string `gorm:"size:100;not null"`
-	Email string `gorm:"size:255;uniqueIndex;not null"`
-}
-
 type IUserRepository interface {
-	createUser(*RegisterRequestDto) (*RegisterResponseDto, error)
+	CreateUser(*RegisterRequestDto) (*RegisterResponseDto, error)
 }
 
 type UserRepository struct {
 	db *gorm.DB
 }
 
-func (r *UserRepository) createUser(request *RegisterRequestDto) (*RegisterResponseDto, error) {
-	user := User{
+func (r *UserRepository) CreateUser(request *RegisterRequestDto) (*RegisterResponseDto, error) {
+	user := model.User{
 		Name:  request.Name,
 		Email: request.Email,
 	}
@@ -35,7 +30,7 @@ func (r *UserRepository) createUser(request *RegisterRequestDto) (*RegisterRespo
 	return &RegisterResponseDto{AccessToken: "AccessTokenPlaceholder", RefreshToken: "RefreshTokenPlaceHolder"}, nil
 }
 
-func InitStorage(cfg *authCfg.Config) *UserRepository {
+func InitStorage(cfg *config.Config) *UserRepository {
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		cfg.Db.Addr,
@@ -50,7 +45,7 @@ func InitStorage(cfg *authCfg.Config) *UserRepository {
 	}
 	fmt.Println("Connected to PostgreSQL!")
 
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&model.User{})
 
 	return &UserRepository{db: db}
 }

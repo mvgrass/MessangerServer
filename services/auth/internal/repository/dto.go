@@ -1,4 +1,4 @@
-package auth
+package repository
 
 type RegisterRequestDto struct {
 	Name  string `json: "name"`
