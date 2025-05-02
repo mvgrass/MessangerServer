@@ -12,6 +12,9 @@ type IUserService interface {
 	HealthHandler(*gin.Context)
 	RegisterHandler(*gin.Context)
 	LoginHandler(*gin.Context)
+	LogoutHandler(*gin.Context)
+	RefreshHandler(*gin.Context)
+	GetMyselfHandler(*gin.Context)
 }
 
 type UserService struct {
@@ -35,6 +38,7 @@ func (r *UserService) RegisterHandler(ctx *gin.Context) {
 		return
 	}
 
+	// check if user already exist
 	err := r.repo.CreateUser(&model.User{Name: requestDto.Name, Email: requestDto.Email})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -44,6 +48,30 @@ func (r *UserService) RegisterHandler(ctx *gin.Context) {
 }
 
 func (r *UserService) LoginHandler(ctx *gin.Context) {
+	// check db and password
+	// create access token create refresh token
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+	})
+}
+
+func (r *UserService) LogoutHandler(ctx *gin.Context) {
+	// remove refresh token from db
+	// optional create and add to blacklist current access token until exparation
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+	})
+}
+
+func (r *UserService) RefreshHandler(ctx *gin.Context) {
+	// return new access token
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "ok",
+	})
+}
+
+func (r *UserService) GetMyselfHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})

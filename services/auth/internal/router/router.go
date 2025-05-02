@@ -6,22 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// - /auth/register add to db req {mail, name, psswd} / resp {jwt tokens}
-// - /auth/login jwt tokens {mailm, psswd} / resp {jwt tokens}
-
-// /auth/refresh {tokens} / {token}
-// /auth/logout {token} /
-// /auth/me {token} / {}
-
-// TODO:
-// reset password api
-
 func InitRouter(service service.IUserService) *gin.Engine {
 	router := gin.Default()
-	auth := router.Group("/auth")
+	auth := router.Group("/api/v1/auth")
 	auth.GET("/health", service.HealthHandler)
 	auth.POST("/register", service.RegisterHandler)
 	auth.POST("/login", service.LoginHandler)
+	auth.POST("/refresh", service.RefreshHandler)
+	auth.POST("/logout", service.LogoutHandler)
+	auth.GET("/me", service.GetMyselfHandler)
+	// auth.POST("/password-reset")
+	// auth.POST("/password-reset/confirm")
 
 	return router
 }

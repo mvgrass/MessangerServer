@@ -7,12 +7,25 @@ import (
 	"MessangerServer/services/auth/internal/service"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	// init config
+	err := godotenv.Load("config/.env")
+	if err != nil {
+		panic(err)
+	}
 	var cfg config.Config
-	cleanenv.ReadConfig("config/local.yml", &cfg)
+	err = cleanenv.ReadConfig("config/local.yml", &cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	err = cleanenv.ReadEnv(&cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	// init logger - later
 
