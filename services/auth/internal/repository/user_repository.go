@@ -12,6 +12,7 @@ import (
 
 type IUserRepository interface {
 	CreateUser(*model.User) error
+	GetUserByEmail(string) (*model.User, error)
 }
 
 type UserRepository struct {
@@ -23,6 +24,14 @@ func (r *UserRepository) CreateUser(user *model.User) error {
 		return err
 	}
 	return nil
+}
+
+func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
+	var user model.User
+	if err := r.db.Where("Email = ?", email).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func InitStorage(cfg *config.Config) *UserRepository {
@@ -40,7 +49,9 @@ func InitStorage(cfg *config.Config) *UserRepository {
 	}
 	fmt.Println("Connected to PostgreSQL!")
 
-	db.AutoMigrate(&model.User{})
-
+	err = db.AutoMigrate(&model.User{})
+	if err != nil {
+		fmt.Println("Migration error:", err)
+	}
 	return &UserRepository{db: db}
 }

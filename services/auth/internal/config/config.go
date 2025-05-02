@@ -2,9 +2,10 @@ package config
 
 type Config struct {
 	App struct {
-		Name string `yaml:"name" env:"APP_NAME"`
-		Addr string `yaml:"addr" env:"APP_ADDR" env-default:"localhost"`
-		Port string `yaml:"port" env:"APP_PORT" env-default:"8080"`
+		Name   string `yaml:"name" env:"APP_NAME"`
+		Addr   string `yaml:"addr" env:"APP_ADDR" env-default:"localhost"`
+		Port   string `yaml:"port" env:"APP_PORT" env-default:"8080"`
+		Pepper string `yaml:"password_pepper" env:"APP_PEPPER"`
 	} `yaml:"app"`
 
 	Db struct {

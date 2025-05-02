@@ -2,6 +2,7 @@ app:
   name: "placeholder"
   addr: "placeholder"
   port: "placeholder"
+  password_pepper: "placeholder"
 
 db:
   user: "placeholder"

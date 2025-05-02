@@ -1,11 +1,15 @@
 package service
 
 import (
+	"MessangerServer/services/auth/internal/config"
 	"MessangerServer/services/auth/internal/model"
 	"MessangerServer/services/auth/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type IUserService interface {
@@ -18,11 +22,12 @@ type IUserService interface {
 }
 
 type UserService struct {
-	repo repository.IUserRepository
+	repo   repository.IUserRepository
+	pepper string
 }
 
-func CreateUserService(repo repository.IUserRepository) *UserService {
-	return &UserService{repo: repo}
+func CreateUserService(repo repository.IUserRepository, cfg *config.Config) *UserService {
+	return &UserService{repo: repo, pepper: cfg.App.Pepper}
 }
 
 func (r *UserService) HealthHandler(ctx *gin.Context) {
@@ -38,22 +43,52 @@ func (r *UserService) RegisterHandler(ctx *gin.Context) {
 		return
 	}
 
-	// check if user already exist
-	err := r.repo.CreateUser(&model.User{Name: requestDto.Name, Email: requestDto.Email})
+	if err := validator.New().Struct(requestDto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation of input data failed"})
+		return
+	}
+
+	//looks like need to sepate logic from transport
+	if _, err := r.repo.GetUserByEmail(requestDto.Email); err == nil {
+		ctx.JSON(http.StatusConflict, gin.H{"error": "This email already used!"})
+		return
+	}
+
+	user := model.User{Uuid: uuid.New().String(), Name: requestDto.Name, Email: requestDto.Email}
+	pass, err := bcrypt.GenerateFromPassword([]byte(requestDto.Password+r.pepper), 14)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Password is too long"})
+		return
+	}
+	user.Password = string(pass)
+
+	err = r.repo.CreateUser(&user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	ctx.JSON(http.StatusCreated, RegisterResponseDto{AccessToken: "placeholder", RefreshToken: "placeholder"})
+	ctx.JSON(http.StatusCreated, UserInfoResponseDto{Id: user.Uuid, Name: user.Name, Email: user.Email})
 }
 
 func (r *UserService) LoginHandler(ctx *gin.Context) {
-	// check db and password
-	// create access token create refresh token
+	var requestDto LoginRequestDto
+	if err := ctx.ShouldBindBodyWithJSON(&requestDto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-	})
+	userInfo, err := r.repo.GetUserByEmail(requestDto.Email)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong email or password"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(userInfo.Password), []byte(requestDto.Password+r.pepper)); err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong email or password"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, JwtTokenRespnseDto{})
 }
 
 func (r *UserService) LogoutHandler(ctx *gin.Context) {

@@ -16,6 +16,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	var cfg config.Config
 	err = cleanenv.ReadConfig("config/local.yml", &cfg)
 	if err != nil {
@@ -31,7 +32,7 @@ func main() {
 
 	// init storage
 	userRepository := repository.InitStorage(&cfg)
-	userService := service.CreateUserService(userRepository)
+	userService := service.CreateUserService(userRepository, &cfg)
 
 	// init router
 	router := router.InitRouter(userService)
