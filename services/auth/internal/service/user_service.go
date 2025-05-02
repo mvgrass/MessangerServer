@@ -1,6 +1,7 @@
 package service
 
 import (
+	"MessangerServer/services/auth/internal/model"
 	"MessangerServer/services/auth/internal/repository"
 	"net/http"
 
@@ -28,18 +29,18 @@ func (r *UserService) HealthHandler(ctx *gin.Context) {
 }
 
 func (r *UserService) RegisterHandler(ctx *gin.Context) {
-	var requestDto repository.RegisterRequestDto
+	var requestDto RegisterRequestDto
 	if err := ctx.ShouldBindBodyWithJSON(&requestDto); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	responseDto, err := r.repo.CreateUser(&requestDto)
+	err := r.repo.CreateUser(&model.User{Name: requestDto.Name, Email: requestDto.Email})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	ctx.JSON(http.StatusCreated, responseDto)
+	ctx.JSON(http.StatusCreated, RegisterResponseDto{AccessToken: "placeholder", RefreshToken: "placeholder"})
 }
 
 func (r *UserService) LoginHandler(ctx *gin.Context) {

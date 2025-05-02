@@ -11,23 +11,18 @@ import (
 )
 
 type IUserRepository interface {
-	CreateUser(*RegisterRequestDto) (*RegisterResponseDto, error)
+	CreateUser(*model.User) error
 }
 
 type UserRepository struct {
 	db *gorm.DB
 }
 
-func (r *UserRepository) CreateUser(request *RegisterRequestDto) (*RegisterResponseDto, error) {
-	user := model.User{
-		Name:  request.Name,
-		Email: request.Email,
-	}
-
+func (r *UserRepository) CreateUser(user *model.User) error {
 	if err := r.db.Create(&user).Error; err != nil {
-		return nil, err
+		return err
 	}
-	return &RegisterResponseDto{AccessToken: "AccessTokenPlaceholder", RefreshToken: "RefreshTokenPlaceHolder"}, nil
+	return nil
 }
 
 func InitStorage(cfg *config.Config) *UserRepository {
