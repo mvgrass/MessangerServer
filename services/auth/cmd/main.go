@@ -1,10 +1,10 @@
 package main
 
 import (
-	"MessangerServer/services/auth/internal/config"
-	"MessangerServer/services/auth/internal/repository"
-	"MessangerServer/services/auth/internal/router"
-	"MessangerServer/services/auth/internal/service"
+	"MessangerServerAuth/internal/config"
+	"MessangerServerAuth/internal/repository"
+	"MessangerServerAuth/internal/router"
+	"MessangerServerAuth/internal/service"
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"

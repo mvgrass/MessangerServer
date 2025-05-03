@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"MessangerServer/services/auth/internal/config"
-	"MessangerServer/services/auth/internal/model"
+	"MessangerServerAuth/internal/config"
+	"MessangerServerAuth/internal/model"
 	"fmt"
 	"log"
 

@@ -1,9 +1,9 @@
 package service
 
 import (
-	"MessangerServer/services/auth/internal/config"
-	"MessangerServer/services/auth/internal/model"
-	"MessangerServer/services/auth/internal/repository"
+	"MessangerServerAuth/internal/config"
+	"MessangerServerAuth/internal/model"
+	"MessangerServerAuth/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -88,7 +88,10 @@ func (r *UserService) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, JwtTokenRespnseDto{})
+	var jwtTokenDto JwtTokenRespnseDto
+	jwtTokenDto.RefreshToken = uuid.NewString()
+
+	ctx.JSON(http.StatusOK, jwtTokenDto)
 }
 
 func (r *UserService) LogoutHandler(ctx *gin.Context) {

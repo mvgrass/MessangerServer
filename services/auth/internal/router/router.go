@@ -1,7 +1,7 @@
 package router
 
 import (
-	"MessangerServer/services/auth/internal/service"
+	"MessangerServerAuth/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

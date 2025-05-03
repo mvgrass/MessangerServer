@@ -1,4 +1,4 @@
-module MessangerServer
+module MessangerServerAuth
 
 go 1.24.2
 
