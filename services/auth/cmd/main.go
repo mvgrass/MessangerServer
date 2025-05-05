@@ -11,14 +11,17 @@ import (
 )
 
 func main() {
-	// init config
-	err := godotenv.Load("config/.env")
-	if err != nil {
-		panic(err)
+	// load global_config and service config .env
+	// might be useful to add some checks of critical
+	globalEnvErr := godotenv.Load(".env")
+	localEnvErr := godotenv.Load("config/.env")
+
+	if globalEnvErr != nil && localEnvErr != nil {
+		panic("Can't open nither global nor local .env files")
 	}
 
 	var cfg config.Config
-	err = cleanenv.ReadConfig("config/local.yml", &cfg)
+	err := cleanenv.ReadConfig("config/local.yml", &cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -31,11 +34,13 @@ func main() {
 	// init logger - later
 
 	// init storage
-	userRepository := repository.InitStorage(&cfg)
-	userService := service.CreateUserService(userRepository, &cfg)
+	AuthRepository := repository.InitStorage(&cfg)
+	AuthService := service.CreateAuthService(AuthRepository, &cfg)
 
 	// init router
-	router := router.InitRouter(userService)
+	router := router.InitRouter(AuthService)
 
 	router.Run(cfg.App.Addr + ":" + cfg.App.Port)
+
+	//TODO: graceful shutdown
 }

@@ -40,6 +40,8 @@ $(BUILD_TARGETS):
 	@echo "Building $(@:build-%=%)..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(MODULE_DIR) && $(GO) build $(LDFLAGS) -o ../../$(OUTPUT_DIR)/$(@:build-%=%)/$(@:build-%=%) ./cmd
+
+	cp -r global_config/.env $(OUTPUT_DIR)/$(@:build-%=%)/;
 	@if [ -d "$(MODULE_DIR)/cmd/config" ]; then \
 		echo "Copying config for $(@:build-%=%)..."; \
 		cp -r $(MODULE_DIR)/cmd/config $(OUTPUT_DIR)/$(@:build-%=%)/; \

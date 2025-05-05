@@ -10,23 +10,23 @@ import (
 	"gorm.io/gorm"
 )
 
-type IUserRepository interface {
+type IAuthRepository interface {
 	CreateUser(*model.User) error
 	GetUserByEmail(string) (*model.User, error)
 }
 
-type UserRepository struct {
+type AuthRepository struct {
 	db *gorm.DB
 }
 
-func (r *UserRepository) CreateUser(user *model.User) error {
+func (r *AuthRepository) CreateUser(user *model.User) error {
 	if err := r.db.Create(&user).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
+func (r *AuthRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	if err := r.db.Where("Email = ?", email).First(&user).Error; err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-func InitStorage(cfg *config.Config) *UserRepository {
+func InitStorage(cfg *config.Config) *AuthRepository {
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		cfg.Db.Addr,
@@ -53,5 +53,5 @@ func InitStorage(cfg *config.Config) *UserRepository {
 	if err != nil {
 		fmt.Println("Migration error:", err)
 	}
-	return &UserRepository{db: db}
+	return &AuthRepository{db: db}
 }

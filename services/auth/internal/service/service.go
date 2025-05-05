@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type IUserService interface {
+type IAuthService interface {
 	HealthHandler(*gin.Context)
 	RegisterHandler(*gin.Context)
 	LoginHandler(*gin.Context)
@@ -21,22 +21,22 @@ type IUserService interface {
 	GetMyselfHandler(*gin.Context)
 }
 
-type UserService struct {
-	repo   repository.IUserRepository
+type AuthService struct {
+	repo   repository.IAuthRepository
 	pepper string
 }
 
-func CreateUserService(repo repository.IUserRepository, cfg *config.Config) *UserService {
-	return &UserService{repo: repo, pepper: cfg.App.Pepper}
+func CreateAuthService(repo repository.IAuthRepository, cfg *config.Config) *AuthService {
+	return &AuthService{repo: repo, pepper: cfg.App.Pepper}
 }
 
-func (r *UserService) HealthHandler(ctx *gin.Context) {
+func (r *AuthService) HealthHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
 }
 
-func (r *UserService) RegisterHandler(ctx *gin.Context) {
+func (r *AuthService) RegisterHandler(ctx *gin.Context) {
 	var requestDto RegisterRequestDto
 	if err := ctx.ShouldBindBodyWithJSON(&requestDto); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -70,7 +70,7 @@ func (r *UserService) RegisterHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, UserInfoResponseDto{Id: user.Uuid, Name: user.Name, Email: user.Email})
 }
 
-func (r *UserService) LoginHandler(ctx *gin.Context) {
+func (r *AuthService) LoginHandler(ctx *gin.Context) {
 	var requestDto LoginRequestDto
 	if err := ctx.ShouldBindBodyWithJSON(&requestDto); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -94,7 +94,7 @@ func (r *UserService) LoginHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, jwtTokenDto)
 }
 
-func (r *UserService) LogoutHandler(ctx *gin.Context) {
+func (r *AuthService) LogoutHandler(ctx *gin.Context) {
 	// remove refresh token from db
 	// optional create and add to blacklist current access token until exparation
 	ctx.JSON(http.StatusOK, gin.H{
@@ -102,14 +102,14 @@ func (r *UserService) LogoutHandler(ctx *gin.Context) {
 	})
 }
 
-func (r *UserService) RefreshHandler(ctx *gin.Context) {
+func (r *AuthService) RefreshHandler(ctx *gin.Context) {
 	// return new access token
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
 }
 
-func (r *UserService) GetMyselfHandler(ctx *gin.Context) {
+func (r *AuthService) GetMyselfHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})

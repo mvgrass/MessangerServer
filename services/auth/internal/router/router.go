@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitRouter(service service.IUserService) *gin.Engine {
+func InitRouter(service service.IAuthService) *gin.Engine {
 	router := gin.Default()
 	auth := router.Group("/api/v1/auth")
 	auth.GET("/health", service.HealthHandler)
