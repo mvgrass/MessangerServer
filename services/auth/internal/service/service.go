@@ -22,12 +22,13 @@ type IAuthService interface {
 }
 
 type AuthService struct {
-	repo   repository.IAuthRepository
-	pepper string
+	repo       repository.IAuthRepository
+	pepper     string
+	bcryptCost int
 }
 
 func CreateAuthService(repo repository.IAuthRepository, cfg *config.Config) *AuthService {
-	return &AuthService{repo: repo, pepper: cfg.App.Pepper}
+	return &AuthService{repo: repo, pepper: cfg.App.Pepper, bcryptCost: cfg.App.Cost}
 }
 
 func (r *AuthService) HealthHandler(ctx *gin.Context) {
@@ -55,7 +56,7 @@ func (r *AuthService) RegisterHandler(ctx *gin.Context) {
 	}
 
 	user := model.User{Uuid: uuid.New().String(), Name: requestDto.Name, Email: requestDto.Email}
-	pass, err := bcrypt.GenerateFromPassword([]byte(requestDto.Password+r.pepper), 14)
+	pass, err := bcrypt.GenerateFromPassword([]byte(requestDto.Password+r.pepper), r.bcryptCost)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Password is too long"})
 		return

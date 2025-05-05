@@ -6,6 +6,7 @@ type Config struct {
 		Addr   string `yaml:"addr" env:"APP_ADDR" env-default:"localhost"`
 		Port   string `yaml:"port" env:"APP_PORT" env-default:"8080"`
 		Pepper string `yaml:"password_pepper" env:"APP_PEPPER"`
+		Cost   int    `yaml:"hashpass_cost"`
 	} `yaml:"app"`
 
 	Db struct {

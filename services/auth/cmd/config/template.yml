@@ -3,6 +3,7 @@ app:
   addr: "placeholder"
   port: "placeholder"
   password_pepper: "placeholder"
+  hashpass_cost: 10
 
 db:
   user: "placeholder"

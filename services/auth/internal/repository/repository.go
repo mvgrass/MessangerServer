@@ -42,9 +42,9 @@ func (r *AuthRepository) GetUserByEmail(email string) (*model.User, error) {
 }
 
 func InitStorage(cfg *config.Config) *AuthRepository {
-	var redisClient *redis.Client
-	var db *gorm.DB
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// TODO: think deeper about work with ctx
+	var repo AuthRepository
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	group, ctx := errgroup.WithContext(ctx)
 
@@ -54,25 +54,16 @@ func InitStorage(cfg *config.Config) *AuthRepository {
 			fmt.Println(err)
 			return err
 		}
-		redisClient := redis.NewClient(opt)
-		ctx1, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		repo.redisClient = redis.NewClient(opt)
+		pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		err = redisClient.Ping(ctx1).Err()
+		err = repo.redisClient.Ping(pingCtx).Err()
 		if err != nil {
 			fmt.Println("Can't connect to redis instance")
 			return err
 		}
 
 		fmt.Println("Successfully connceted to redis!")
-
-		group.Go(func() error {
-			<-ctx.Done()
-			sqlDb, err := db.DB()
-			if err != nil {
-				return sqlDb.Close()
-			}
-			return err
-		})
 
 		return nil
 	})
@@ -85,33 +76,40 @@ func InitStorage(cfg *config.Config) *AuthRepository {
 			cfg.Db.DbName,
 			cfg.Db.Port)
 
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		// TODO: split on postgress connection
+		// and create if not exist
+		var err error
+		repo.db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
+		pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		sqlDb, err := repo.db.DB()
+		if err != nil {
+			return err
+		}
+		if err = sqlDb.PingContext(pingCtx); err != nil {
+			return err
+		}
 		fmt.Println("Connected to PostgreSQL!")
 
-		err = db.AutoMigrate(&model.User{})
+		err = repo.db.AutoMigrate(&model.User{})
 		if err != nil {
 			fmt.Println("Migration error:", err)
 			return err
 		}
 
-		group.Go(func() error {
-			<-ctx.Done()
-			return redisClient.Close()
-		})
-
 		return nil
 	})
 
 	if err := group.Wait(); err != nil {
-		if redisClient != nil {
-			redisClient.Close()
+		if repo.redisClient != nil {
+			repo.redisClient.Close()
 		}
-		if db != nil {
-			sqlDb, err := db.DB()
+		if repo.db != nil {
+			sqlDb, err := repo.db.DB()
 			if err != nil {
 				sqlDb.Close()
 			}
@@ -119,5 +117,5 @@ func InitStorage(cfg *config.Config) *AuthRepository {
 		log.Fatal()
 	}
 
-	return &AuthRepository{redisClient: redisClient, db: db}
+	return &repo
 }
