@@ -15,4 +15,8 @@ type Config struct {
 		Addr     string `yaml:"addr" env:"DB_ADDR" env-default:"localhost"`
 		Port     string `yaml:"port" env:"DB_PORT" env-default:"5432"`
 	} `yaml:"db"`
+
+	JwtTokenSecret string `env:"JWT_TOKEN_SECRET"`
+
+	RedisUrl string `env:"REDIS_URL"`
 }
