@@ -22,9 +22,11 @@ type IAuthService interface {
 }
 
 type AuthService struct {
-	repo       repository.IAuthRepository
-	pepper     string
-	bcryptCost int
+	repo             repository.IAuthRepository
+	pepper           string
+	accessJwtSecret  string
+	refreshJwtSecret string
+	bcryptCost       int
 }
 
 func CreateAuthService(repo repository.IAuthRepository, cfg *config.Config) *AuthService {
@@ -89,29 +91,50 @@ func (r *AuthService) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	var jwtTokenDto JwtTokenRespnseDto
-	jwtTokenDto.RefreshToken = uuid.NewString()
+	accessToken, refreshToken, err := GenerateToken(userInfo.Uuid, r.accessJwtSecret, r.refreshJwtSecret)
 
-	ctx.JSON(http.StatusOK, jwtTokenDto)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Can't generate JWT"})
+		return
+	}
+
+	r.repo.StoreRefreshToken(userInfo, refreshToken)
+
+	ctx.JSON(http.StatusOK, JwtTokenRespnseDto{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    0,
+	})
 }
 
 func (r *AuthService) LogoutHandler(ctx *gin.Context) {
-	// remove refresh token from db
-	// optional create and add to blacklist current access token until exparation
+	accessToken := ctx.GetHeader("X-Access-Token")
+	//TODO: Parse accessToken to get userId without expirity
+	// as it would not be checked on nginx side
+	userId := "placeholder"
+
+	err := r.repo.RevokeTokens(userId, accessToken)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Bad request!"})
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
 }
 
 func (r *AuthService) RefreshHandler(ctx *gin.Context) {
-	// return new access token
 	ctx.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 	})
 }
 
 func (r *AuthService) GetMyselfHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-	})
+	userId := ctx.GetHeader("X-User")
+	user, err := r.repo.GetUserByUserId(userId)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Bad request!"})
+	}
+
+	ctx.JSON(http.StatusOK, UserInfoResponseDto{Id: user.Uuid, Name: user.Name, Email: user.Email})
 }

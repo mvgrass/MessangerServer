@@ -17,8 +17,9 @@ import (
 type IAuthRepository interface {
 	CreateUser(*model.User) error
 	GetUserByEmail(string) (*model.User, error)
-	//StoreRefreshToken(*model.User, string)
-	//DeleteRefreshToken(string)
+	GetUserByUserId(string) (*model.User, error)
+	StoreRefreshToken(*model.User, string) error
+	RevokeTokens(string, string) error
 }
 
 type AuthRepository struct {
@@ -33,12 +34,35 @@ func (r *AuthRepository) CreateUser(user *model.User) error {
 	return nil
 }
 
+func (r *AuthRepository) GetUserByUserId(userId string) (*model.User, error) {
+	var user model.User
+	if err := r.db.Where("UserId = ?", userId).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *AuthRepository) GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
 	if err := r.db.Where("Email = ?", email).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *AuthRepository) StoreRefreshToken(user *model.User, refreshToken string) error {
+	ctx := context.Background()
+
+	return r.redisClient.Set(ctx, fmt.Sprint("auth:refresh:%w", user.Uuid), refreshToken, 7*24*time.Hour).Err()
+}
+
+func (r *AuthRepository) RevokeTokens(userId, accessToken string) error {
+	ctx := context.Background()
+	r.redisClient.Del(ctx, userId)
+	// Move time to config for centrilized usage
+	r.redisClient.Set(ctx, fmt.Sprint("auth:revoked:%w", accessToken), "1", 5*time.Minute)
+
+	return nil
 }
 
 func InitStorage(cfg *config.Config) *AuthRepository {

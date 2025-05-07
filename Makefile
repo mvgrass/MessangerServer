@@ -63,7 +63,8 @@ clean:
 mod-tidy:
 	@for dir in $(MODULE_DIRS); do \
 		echo "Tidying $$(basename $$dir)..."; \
-		cd $$dir && $(GO) mod tidy || exit 1; \
+		pushd $$dir && $(GO) mod tidy || exit 1; \
+		popd; \
 	done
 
 work-sync:
