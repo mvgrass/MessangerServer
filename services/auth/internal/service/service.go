@@ -4,7 +4,9 @@ import (
 	"MessangerServerAuth/internal/config"
 	"MessangerServerAuth/internal/model"
 	"MessangerServerAuth/internal/repository"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -30,7 +32,12 @@ type AuthService struct {
 }
 
 func CreateAuthService(repo repository.IAuthRepository, cfg *config.Config) *AuthService {
-	return &AuthService{repo: repo, pepper: cfg.App.Pepper, bcryptCost: cfg.App.Cost}
+	return &AuthService{
+		repo:             repo,
+		pepper:           cfg.App.Pepper,
+		bcryptCost:       cfg.App.Cost,
+		accessJwtSecret:  cfg.JwtTokenSecret,
+		refreshJwtSecret: cfg.JwtTokenSecret}
 }
 
 func (r *AuthService) HealthHandler(ctx *gin.Context) {
@@ -68,6 +75,7 @@ func (r *AuthService) RegisterHandler(ctx *gin.Context) {
 	err = r.repo.CreateUser(&user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	ctx.JSON(http.StatusCreated, UserInfoResponseDto{Id: user.Uuid, Name: user.Name, Email: user.Email})
@@ -82,11 +90,13 @@ func (r *AuthService) LoginHandler(ctx *gin.Context) {
 
 	userInfo, err := r.repo.GetUserByEmail(requestDto.Email)
 	if err != nil {
+		fmt.Println(err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong email or password"})
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(userInfo.Password), []byte(requestDto.Password+r.pepper)); err != nil {
+		fmt.Println(err)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong email or password"})
 		return
 	}
@@ -94,38 +104,85 @@ func (r *AuthService) LoginHandler(ctx *gin.Context) {
 	accessToken, refreshToken, err := GenerateToken(userInfo.Uuid, r.accessJwtSecret, r.refreshJwtSecret)
 
 	if err != nil {
+		fmt.Println(err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Can't generate JWT"})
 		return
 	}
 
-	r.repo.StoreRefreshToken(userInfo, refreshToken)
+	r.repo.StoreRefreshToken(userInfo.Uuid, refreshToken)
 
 	ctx.JSON(http.StatusOK, JwtTokenRespnseDto{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresAt:    0,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresIn:  int64(15 * time.Minute),
+		RefreshExpiresIn: int64(7 * 24 * time.Hour),
 	})
 }
 
 func (r *AuthService) LogoutHandler(ctx *gin.Context) {
 	accessToken := ctx.GetHeader("X-Access-Token")
-	//TODO: Parse accessToken to get userId without expirity
-	// as it would not be checked on nginx side
-	userId := "placeholder"
+	userClaims, err := ParseAccessTokenWithoutExparation(accessToken, r.accessJwtSecret)
 
-	err := r.repo.RevokeTokens(userId, accessToken)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Error parsing your token!"})
+		return
+	}
+
+	err = r.repo.RevokeTokens(userClaims.UserId, accessToken)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Bad request!"})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+		"status": "Loged out!",
 	})
 }
 
 func (r *AuthService) RefreshHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+	var reqDto RefreshRequestDto
+	if err := ctx.ShouldBindJSON(&reqDto); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+		return
+	}
+
+	oldAccessToken := ctx.GetHeader("X-Access-Token")
+	oldRefreshToken := reqDto.RefreshToken
+
+	refreshClaims, err := ParseRefreshToken(oldRefreshToken, r.refreshJwtSecret)
+	if err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong or expired refresh token!"})
+		return
+	}
+
+	storedToken, err := r.repo.GetRefreshToken(refreshClaims.Subject)
+	if storedToken != oldRefreshToken || err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong or expired refresh token!"})
+		return
+	}
+
+	if err = r.repo.RevokeTokens(refreshClaims.Subject, oldAccessToken); err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Wrong or expired refresh token!"})
+		return
+	}
+
+	accessToken, refreshToken, err := GenerateToken(refreshClaims.Subject, r.accessJwtSecret, r.refreshJwtSecret)
+
+	if err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Can't generate JWT"})
+		return
+	}
+
+	r.repo.StoreRefreshToken(refreshClaims.Subject, refreshToken)
+
+	ctx.JSON(http.StatusOK, JwtTokenRespnseDto{
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresIn:  int64(15 * time.Minute),
+		RefreshExpiresIn: int64(7 * 24 * time.Hour),
 	})
 }
 

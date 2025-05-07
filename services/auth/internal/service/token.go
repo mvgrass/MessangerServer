@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +25,7 @@ func GenerateToken(userId, accessJwtSecret, refreshJwtSecret string) (accessToke
 		},
 	}
 
-	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString(accessJwtSecret)
+	accessToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims).SignedString([](byte)(accessJwtSecret))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create access token: %w", err)
 	}
@@ -37,10 +38,49 @@ func GenerateToken(userId, accessJwtSecret, refreshJwtSecret string) (accessToke
 		Subject:   userId,
 	}
 
-	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString(refreshJwtSecret)
+	refreshToken, err = jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([](byte)(refreshJwtSecret))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+func ParseRefreshToken(tokenString, secretString string) (*jwt.RegisteredClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&jwt.RegisteredClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(secretString), nil
+		},
+	)
+
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, err
+}
+
+func ParseAccessTokenWithoutExparation(tokenString, secretString string) (*UserClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&UserClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(secretString), nil
+		},
+	)
+
+	if claims, ok := token.Claims.(*UserClaims); ok {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return claims, nil
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("error during parsing access token:%w", err)
+		}
+		return claims, nil
+	}
+
+	return nil, err
 }

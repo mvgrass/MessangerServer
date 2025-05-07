@@ -17,8 +17,13 @@ type UserInfoResponseDto struct {
 	Email string `json:"email"`
 }
 
-type JwtTokenRespnseDto struct {
-	AccessToken  string `json:"accessToken"`
+type RefreshRequestDto struct {
 	RefreshToken string `json:"refreshToken"`
-	ExpiresAt    uint64 `json:"expiresAt"`
+}
+
+type JwtTokenRespnseDto struct {
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	AccessExpiresIn  int64  `json:"accessExpiresIn"`
+	RefreshExpiresIn int64  `json:"refreshExpiresIn"`
 }
