@@ -15,6 +15,7 @@ func InitRouter(service service.IAuthService) *gin.Engine {
 	auth.POST("/refresh", service.RefreshHandler)
 	auth.POST("/logout", service.LogoutHandler)
 	auth.GET("/me", service.GetMyselfHandler)
+	auth.GET("/validate", service.Validate)
 	// auth.POST("/password-reset")
 	// auth.POST("/password-reset/confirm")
 

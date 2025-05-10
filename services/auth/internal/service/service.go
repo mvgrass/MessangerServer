@@ -6,6 +6,7 @@ import (
 	"MessangerServerAuth/internal/repository"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ type IAuthService interface {
 	LogoutHandler(*gin.Context)
 	RefreshHandler(*gin.Context)
 	GetMyselfHandler(*gin.Context)
+	Validate(*gin.Context)
 }
 
 type AuthService struct {
@@ -120,7 +122,11 @@ func (r *AuthService) LoginHandler(ctx *gin.Context) {
 }
 
 func (r *AuthService) LogoutHandler(ctx *gin.Context) {
-	accessToken := ctx.GetHeader("X-Access-Token")
+	accessToken := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
+	if accessToken == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 	userClaims, err := ParseAccessTokenWithoutExparation(accessToken, r.accessJwtSecret)
 
 	if err != nil {
@@ -146,7 +152,7 @@ func (r *AuthService) RefreshHandler(ctx *gin.Context) {
 		return
 	}
 
-	oldAccessToken := ctx.GetHeader("X-Access-Token")
+	oldAccessToken := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
 	oldRefreshToken := reqDto.RefreshToken
 
 	refreshClaims, err := ParseRefreshToken(oldRefreshToken, r.refreshJwtSecret)
@@ -187,11 +193,45 @@ func (r *AuthService) RefreshHandler(ctx *gin.Context) {
 }
 
 func (r *AuthService) GetMyselfHandler(ctx *gin.Context) {
-	userId := ctx.GetHeader("X-User")
+	userId := ctx.GetHeader("X-User-ID")
 	user, err := r.repo.GetUserByUserId(userId)
 	if err != nil {
+		fmt.Println(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Bad request!"})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, UserInfoResponseDto{Id: user.Uuid, Name: user.Name, Email: user.Email})
+}
+
+func (r *AuthService) Validate(ctx *gin.Context) {
+	accessToken := strings.TrimPrefix(ctx.GetHeader("Authorization"), "Bearer ")
+	if accessToken == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if revoked, _ := r.repo.IsTokenRevoked(accessToken); revoked != 0 {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if userId, err := r.repo.GetUserIdByAccessTokenCache(accessToken); err == nil {
+		ctx.Header("X-User-ID", userId)
+		ctx.Status(http.StatusOK)
+		return
+	}
+
+	userClaims, err := ParseAccessToken(accessToken, r.accessJwtSecret)
+
+	if err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	r.repo.CacheUserByToken(accessToken, userClaims.UserId, time.Until(userClaims.ExpiresAt.Time))
+
+	ctx.Header("X-User-ID", userClaims.UserId)
+	ctx.Status(http.StatusOK)
 }

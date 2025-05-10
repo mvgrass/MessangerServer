@@ -21,6 +21,9 @@ type IAuthRepository interface {
 	StoreRefreshToken(string, string) error
 	GetRefreshToken(string) (string, error)
 	RevokeTokens(string, string) error
+	CacheUserByToken(string, string, time.Duration) error
+	IsTokenRevoked(string) (int64, error)
+	GetUserIdByAccessTokenCache(string) (string, error)
 }
 
 type AuthRepository struct {
@@ -37,7 +40,7 @@ func (r *AuthRepository) CreateUser(user *model.User) error {
 
 func (r *AuthRepository) GetUserByUserId(userId string) (*model.User, error) {
 	var user model.User
-	if err := r.db.Where("UserId = ?", userId).First(&user).Error; err != nil {
+	if err := r.db.Where("Uuid = ?", userId).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -66,6 +69,21 @@ func (r *AuthRepository) RevokeTokens(userId, accessToken string) error {
 	ctx := context.Background()
 	// TODO: Move time to config for centrilized usage
 	return r.redisClient.Set(ctx, fmt.Sprintf("auth:revoked:%s", accessToken), "1", 15*time.Minute).Err()
+}
+
+func (r *AuthRepository) CacheUserByToken(accessToken, userId string, exparation time.Duration) error {
+	ctx := context.Background()
+	return r.redisClient.Set(ctx, fmt.Sprintf("auth:accessCache:%s", accessToken), userId, exparation).Err()
+}
+
+func (r *AuthRepository) IsTokenRevoked(accessToken string) (int64, error) {
+	ctx := context.Background()
+	return r.redisClient.Exists(ctx, fmt.Sprintf("auth:revoked:%s", accessToken)).Result()
+}
+
+func (r *AuthRepository) GetUserIdByAccessTokenCache(accessToken string) (string, error) {
+	ctx := context.Background()
+	return r.redisClient.Get(ctx, fmt.Sprintf("auth:accessCache:%s", accessToken)).Result()
 }
 
 func InitStorage(cfg *config.Config) *AuthRepository {

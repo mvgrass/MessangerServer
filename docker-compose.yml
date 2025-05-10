@@ -14,7 +14,16 @@ services:
     networks:
       - general_network
 
-  #nginx:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./global_config/nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - general_network    
+    depends_on:
+      - auth-service
 
   redis:
     image: redis:latest

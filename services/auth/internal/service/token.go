@@ -84,3 +84,22 @@ func ParseAccessTokenWithoutExparation(tokenString, secretString string) (*UserC
 
 	return nil, err
 }
+
+func ParseAccessToken(tokenString, secretString string) (*UserClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&UserClaims{},
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(secretString), nil
+		},
+	)
+
+	if claims, ok := token.Claims.(*UserClaims); ok {
+		if err != nil {
+			return nil, fmt.Errorf("error during parsing access token:%w", err)
+		}
+		return claims, nil
+	}
+
+	return nil, err
+}
