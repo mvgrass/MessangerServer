@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-messanger
+    env_file:
+      - "global_config/.env"
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - general_network
+
+  #nginx:
+
+  redis:
+    image: redis:latest
+    container_name: redis-messanger
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - general_network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/cmd/Dockerfile
+    container_name: auth-service-messanger
+    ports:
+      - "8069:8069"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - general_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  general_network:
+    driver: bridge

@@ -1,7 +1,8 @@
+SHELL := /bin/bash
 GO := go
 PROJECT_NAME := MessangerServer
 VERSION := $(shell git describe --tags --always --dirty)
-MODULE_DIRS := $(shell find ./services -type f -name go.mod -exec dirname {} \;)
+MODULE_DIRS := $(shell find ./services ./libs -type f -name go.mod -exec dirname {} \;)
 MODULE_NAMES := $(notdir $(MODULE_DIRS))
 
 
@@ -53,10 +54,6 @@ $(TEST_TARGETS):
 	@echo "Testing $(@:test-%=%)..."
 	cd $(MODULE_DIR) && $(GO) test $(TEST_FLAGS) ./...
 
-lint:
-	@echo "Running golangci-lint..."
-	$(GO) run github.com/golangci/golangci-lint/cmd/golangci-lint run ./...
-
 clean:
 	@rm -rf $(OUTPUT_DIR) $(COVERAGE_DIR)
 
@@ -79,7 +76,6 @@ help:
 	@echo "  run-<name>       run one module by it's name (example run-auth)"
 	@echo "  build-<name>     build one module by it's name (example build-auth)"
 	@echo "  test-<name>      test one module by it's name (example test-auth)"
-	@echo "  lint             linter check"
 	@echo "  clean            clean build and test artifacts"
 	@echo "  mod-tidy         update dependencies"
 	@echo "  work-sync        sync workspace"
